@@ -89,35 +89,101 @@ const server = http.createServer((req, res) => {
     // Phase 1: GET /dogs
     if (req.method === 'GET' && req.url === '/dogs') {
       // Your code here
+      // reading proper html pattern
+      const html = fs.readFileSync("./views/dogs.html", 'utf-8');
+      // creating part of html code with dog names list 
+      let listHtml = ''
+      for (const dog of dogs) {
+        listHtml += `<li>${dog.name}</li>
+        `
+      }
+      // replacing in pattern var with new code list
+      let newHtml = html.replace(/#{dogsList}/g, listHtml)
+      // returning:
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html");
+      res.write(newHtml);
+      return res.end();
+
     }
 
     // Phase 2: GET /dogs/new
     if (req.method === 'GET' && req.url === '/dogs/new') {
       // Your code here
+      const htmlPage = fs.readFileSync("./views/create-dog.html", 'utf-8');
+      const resBody = htmlPage;        
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html");
+      res.write(resBody);
+      return res.end();
     }
     
     // Phase 3: GET /dogs/:dogId
-    if (req.method === 'GET' && req.url.startsWith('/dogs/')) {
+    if (req.method === 'GET' && req.url.startsWith('/dogs/')) {      
       const urlParts = req.url.split('/');
       if (urlParts.length === 3) {
-        const dogId = urlParts[2];
+        const dogId = urlParts[2];        
         const dog = dogs.find(dog => dog.dogId == dogId);
         // Your code here
+        if (dog) {
+          const htmlPage = fs.readFileSync("./views/dog-details.html", 'utf-8');
+          const resBody = htmlPage
+            .replace(/#{name}/g, dog.name)
+            .replace(/#{age}/g, dog.age);
+          
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "text/html");
+          res.write(resBody);
+          return res.end();
+        }
       }
     }
 
     // Phase 4: POST /dogs
     if (req.method === 'POST' && req.url === '/dogs') {
-      // Your code here
+      // Your code here      
+
+      // parse req body:
+      // simply parse:
+      let formDog = req.body;
+      let name = formDog.name;
+      let age = formDog.age;
+      let newId = getNewDogId();
+      // create new dog on server based on parsed and add to server data
+      let newDog = {
+        dogId: newId,
+        name,
+        age
+      };
+      dogs.push(newDog);
+      // redirect
+        res.statusCode = 302;
+        res.setHeader("Location", "/dogs/" + newId);        
+        return res.end();
     }
 
     // Phase 5: GET /dogs/:dogId/edit
     if (req.method === 'GET' && req.url.startsWith('/dogs/')) {
+      console.log('what is? url ', req.url);
       const urlParts = req.url.split('/');
       if (urlParts.length === 4 && urlParts[3] === 'edit') {
         const dogId = urlParts[2];
         const dog = dogs.find(dog => dog.dogId == dogId);
+
         // Your code here
+        if (dog) {
+          const htmlPage = fs.readFileSync("./views/edit-dog.html", 'utf-8');      
+          const resBody = htmlPage
+            .replace(/#{name}/g, dog.name)
+            .replace(/#{age}/g, dog.age)
+            .replace(/#{dogId}/g, dog.dogId);
+            
+          
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "text/html");
+          res.write(resBody);
+          return res.end();
+        }
       }
     }
 
@@ -128,13 +194,31 @@ const server = http.createServer((req, res) => {
         const dogId = urlParts[2];
         const dog = dogs.find(dog => dog.dogId == dogId);
         // Your code here
+        
+        let formDog = req.body;
+        // setting server dog:
+        dog.name = formDog.name;
+        dog.age = formDog.age;                
+        // redirect
+        res.statusCode = 302;
+        res.setHeader('Location', "/dogs/" + dogId);             
+        return res.end();
+        
       }
     }
 
     // No matching endpoint
     const htmlPage = fs.readFileSync("./views/error.html", 'utf-8');
+
+    let message = 'Page Not Found';
+    if (req.method === 'GET' && req.url.startsWith('/dogs/')) {      
+      const urlParts = req.url.split('/');
+      if (urlParts[2]) { // has id and still was not done before
+        message = 'Dog Not Found';
+      }
+    }
     const resBody = htmlPage
-      .replace(/#{message}/g, 'Page Not Found');
+      .replace(/#{message}/g, message);
     
     res.statusCode = 404;
     res.setHeader("Content-Type", "text/html");
